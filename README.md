@@ -2,7 +2,25 @@
 `npm run update`
 
 
-### Instruksjoner
+## Oppsett
+
+    git clone https://github.com/ErlendEllingsen/randomcrap-mat.git kantinevote
+    cd ./kantinevote
+    npm install
+
+### Få tilsendt `key.json` (mail, hipchat)
+
+Legg denne i kantinevote-mappen
+
+### Kjør kantinevote
+
+`node index.js`
+
+Velg nickname
+
+Deretter start programmet igjen :~)
+
+## Instruksjoner
 
 Kommandoer:
 
