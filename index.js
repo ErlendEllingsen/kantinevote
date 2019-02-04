@@ -188,18 +188,26 @@ firebase.initializeApp({
 var db = firebase.database();
 var ref = db.ref("/");  //Set the current directory you are working in
 var chatRef = db.ref("/chat");  //Set the current directory you are working in
+var h2Ref = db.ref("/mat/h2");  //Set the current directory you are working in
+var h9Ref = db.ref("/mat/h9");  //Set the current directory you are working in
+var votesRef = db.ref("/votes");  //Set the current directory you are working in
 
 
 console.log('Loading...');
 
+
+let systemData = undefined;
+
 ref.on("value", function(snapshot) {
-    var data = snapshot.val();   //Data is in JSON format.
-    updateLine(data);
+    systemData = snapshot.val();
+    updateLine();
   });
 
 
-const updateLine = (value) => {
-
+const clearScreen = () => {
+    process.stdout.clearLine();
+    process.stdout.moveCursor(0,-1);
+    process.stdout.clearLine();
     process.stdout.moveCursor(0,-1);
     process.stdout.clearLine();
     process.stdout.moveCursor(0,-1);
@@ -217,13 +225,56 @@ const updateLine = (value) => {
     process.stdout.moveCursor(0,-1);
     process.stdout.clearLine();
     process.stdout.cursorTo(0);
+}
+
+const errorScreen = (message) => {
+    clearScreen(); 
+    console.log(colors.bgRed(message));
+    setTimeout(updateLine, 3000);
+}
+
+const successScreen = (message) => {
+    clearScreen();
+    console.log(colors.bgGreen(message));
+    setTimeout(updateLine, 3000);
+}
+
+const getVotes = () => {
+    if (systemData.votes === undefined) {
+        return {
+            h2: 0,
+            h9: 0
+        }
+    }
+
+    const votes = Object.values(systemData.votes);
+
+    const pollRes = {
+        h2: 0,
+        h9: 0
+    }
+
+    votes.forEach((el) => {
+        pollRes[el.vote]++;
+    })
+    return pollRes;
+}
+
+const updateLine = () => {
+
+    const pollRes = getVotes();
+
+    const value = systemData;
+
+    clearScreen();
     process.stdout.write(`
 -----------------------------
-${colors.bgBlue(`Mat ${pack.version} - ${new Date().toLocaleDateString()}`)}
+${colors.bgBlue(`Mat ${pack.version} - ${new Date().toLocaleDateString()}`)} Help? -> readme.md
 -----------------------------
-Mat : omething something something
-Chat: ${colors.yellow(value.chat.author)}: ${colors.grey(value.chat.msg)}
-Poll: Votes for h9: ${value.h9} h2: ${value.h2}\n`);
+${colors.green('Mat h2')} : ${value.mat.h2}
+${colors.red('Mat h9')} : ${value.mat.h9}
+Chat   : ${colors.yellow(value.chat.author)}: ${colors.cyan(value.chat.msg)}
+Poll   : Votes for h9: ${pollRes.h9} h2: ${pollRes.h2}\n`);
     chatFeature();
 }
 
@@ -233,14 +284,97 @@ const rl = readline.createInterface({
   });
 
 
+
+const voteKantine = (kantine) => {
+
+    const createVote = () => {
+        votesRef.push({
+            userid: userCfg.userid,
+            vote: kantine,
+            ts: new Date().toLocaleString()
+        })
+        successScreen(`Du har stemt på ${colors.bold(kantine)}`);
+        return;
+    }
+
+    if (systemData.votes === undefined) {
+        createVote();
+        return;
+    }
+
+
+    const votes = Object.values(systemData.votes);
+    const userVotePos = votes.findIndex(((el) => { return el.userid === userCfg.userid }));
+
+    if (userVotePos === -1) {
+        createVote();
+        return;
+    }
+
+    return errorScreen('Du har allerede stemt i dag');
+
+}
+
+const clearMyVote = () => {
+    if (systemData.votes === undefined) {
+        return errorScreen('Ingen aktive stemmer');
+    }
+
+    for (let key in systemData.votes) {
+        const o = systemData.votes[key];
+        if (o.userid === userCfg.userid) {
+            console.log(key);
+            votesRef.child(key).remove();
+            return successScreen('Du har fjernet din stemme');
+        }
+    }
+
+    return errorScreen('Du har ingen stemme fra før');
+
+
+    // console.log(systemData.votes);
+
+}
+
 const chatFeature = () => {
     
     rl.question('Enter chat msg: ', (answer) => {
+
+        if (answer.startsWith('/vote')) {
+            const args = answer.split(' ');
+            if (args.length === 1) return errorScreen('Du må spesifisere kantine. Eks /vote <h2|h9>')
+            if (args[1] !== 'h2' && args[1] !== 'h9') return errorScreen('Ugyldig kantine. Eks /vote <h2|h9>')
+            voteKantine(args[1]);
+            return;
+        } else if (answer.startsWith('/delvote')) {
+            clearMyVote();
+            return;
+        } else if (answer.startsWith('/host')) {
+            const args = answer.split(' ');
+            switch(args[1]) {
+                case 'h2':
+                    h2Ref.set(args.slice(2).join(' '));
+                    break;
+                case 'h9':
+                    h9Ref.set(args.slice(2).join(' '));
+                    break;
+                case 'resetvote':
+                    votesRef.set(null);
+                    break;
+            }
+            updateLine();
+            return;
+        }
+
         // TODO: Log the answer in a database
+
+        if (answer.trim() === '') return errorScreen('Du kan ikke sende tom melding.');
+
         chatRef.set({
             msg: answer,
             author: userCfg.nick
         });
+        updateLine();
         //console.log(`Thank you for your valuable feedback: ${answer}`);
     });
 }
