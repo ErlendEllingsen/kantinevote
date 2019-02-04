@@ -1,0 +1,20 @@
+{
+  "name": "mat",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "colors": "^1.3.3",
+    "firebase": "^5.8.2",
+    "password-prompt": "^1.0.7",
+    "request-ntlm-lite": "^0.2.4",
+    "striptags": "^3.1.1",
+    "uuid": "^3.3.2"
+  }
+}
