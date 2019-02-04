@@ -1,5 +1,4 @@
-### Oppdatere klienten
-`npm run update`
+<img src="https://i.imgur.com/SmLcicd.jpg">
 
 
 ## Oppsett
@@ -19,6 +18,10 @@ Legg denne i kantinevote-mappen
 Velg nickname
 
 Deretter start programmet igjen :~)
+
+### Oppdatere klienten
+`npm run update`
+
 
 ## Instruksjoner
 
