@@ -1,4 +1,5 @@
 <img src="https://i.imgur.com/SmLcicd.jpg">
+<a href="bit.ly/kantinevote">bit.ly/kantinevote</a>
 
 
 ## Oppsett
