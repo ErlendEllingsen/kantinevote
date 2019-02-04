@@ -1,3 +1,7 @@
+### Oppdatere klienten
+`npm run update`
+
+
 ### Instruksjoner
 
 Kommandoer:
