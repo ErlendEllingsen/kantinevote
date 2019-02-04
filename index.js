@@ -10,7 +10,7 @@ const uuid = require('uuid/v1');
 var striptags = require('striptags');
 var firebase = require("firebase");
 
-const pack = JSON.parse(fs.readFileSync('./package.json').toString());
+const pack = JSON.parse(fs.readFileSync(__dirname + '/package.json').toString());
 
 const mos = [
     'januar',
@@ -34,7 +34,7 @@ const getTodaysDateNorwegian = () => {
 
 const parseWebMenu = ((machine, username, password) => {
 
-    const host = JSON.parse(fs.readFileSync('./host.json').toString());
+    const host = JSON.parse(fs.readFileSync(__dirname + '/host.json').toString());
 
     const {ntlm_domain, url} = host;
 
@@ -150,7 +150,7 @@ ${colors.yellow('*')} Kun en stemme per dag per bruker.
     const nick = await getNick();
     const userid = uuid();
 
-    fs.writeFileSync('./user.json', JSON.stringify({
+    fs.writeFileSync(__dirname + '/user.json', JSON.stringify({
         nick,
         userid
     }))
@@ -159,12 +159,12 @@ ${colors.yellow('*')} Kun en stemme per dag per bruker.
 }
 
 
-if (!fs.existsSync('./user.json')) {
+if (!fs.existsSync(__dirname + '/user.json')) {
     setupUserConfig();
     return;
 }
 
-if (!fs.existsSync('./key.json')) {
+if (!fs.existsSync(__dirname + '/key.json')) {
     console.log(
         `
 Oppsett av mat-klient:
@@ -176,8 +176,7 @@ Denne får du av en annen på teamet`
     return;
 }
 
-const userCfg = JSON.parse(fs.readFileSync('./user.json').toString());
-
+const userCfg = JSON.parse(fs.readFileSync(__dirname + '/user.json').toString());
 
 // FIREBASE STUFF 
 
