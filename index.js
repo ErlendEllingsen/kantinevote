@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const fs = require('fs');
 const readline = require('readline');
 const { execFile } = require('child_process');
@@ -177,12 +179,6 @@ Denne får du av en annen på teamet`
 const userCfg = JSON.parse(fs.readFileSync('./user.json').toString());
 
 
-
-
-
-
-
-
 // FIREBASE STUFF 
 
 firebase.initializeApp({
@@ -192,6 +188,8 @@ firebase.initializeApp({
 
 var db = firebase.database();
 var ref = db.ref("/");  //Set the current directory you are working in
+var chatRef = db.ref("/chat");  //Set the current directory you are working in
+
 
 console.log('Loading...');
 
@@ -240,15 +238,12 @@ const chatFeature = () => {
     
     rl.question('Enter chat msg: ', (answer) => {
         // TODO: Log the answer in a database
-        ref.set({
-            chat: {
-                msg: answer,
-                author: userCfg.nick
-            }
-        })
+        chatRef.set({
+            msg: answer,
+            author: userCfg.nick
+        });
         //console.log(`Thank you for your valuable feedback: ${answer}`);
     });
 }
 
 
-//getTodaysMenu();
