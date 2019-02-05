@@ -6,7 +6,7 @@
   "scripts": {
     "run": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "update": "git pull && npm install",
+    "update": "git checkout . && git pull && npm install",
     "upgrade": "npm run update"
   },
   "repository": {
