@@ -7,7 +7,6 @@ module.exports = class Notifications {
 
   getSetting() {
     return (
-      this.UserConfig.userCfg['notifications'] === undefined ||
       this.UserConfig.userCfg['notifications'] === true
     );
   }
