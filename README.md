@@ -4,7 +4,7 @@
 
 ## Oppsett
 
-    git clone https://github.com/ErlendEllingsen/randomcrap-mat.git kantinevote
+    git clone https://github.com/ErlendEllingsen/kantinevote.git
     cd ./kantinevote
     npm install
     vim ./key.json
