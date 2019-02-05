@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+// beware of ugly code
+// u were warned
+
 const fs = require('fs');
 const readline = require('readline');
 const { execFile } = require('child_process');
