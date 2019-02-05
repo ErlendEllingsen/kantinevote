@@ -2,131 +2,26 @@
 
 // beware of ugly code
 // u were warned
+// will maybe be fixed later
 
 const fs = require('fs');
 const readline = require('readline');
-const { execFile } = require('child_process');
-const prompt = require('password-prompt')
-const ntlm = require('request-ntlm-lite');
 const colors = require('colors');
 const uuid = require('uuid/v1');
-var striptags = require('striptags');
-var firebase = require("firebase");
+const firebase = require("firebase");
+const notifier = require('node-notifier');
+
+const Notifications = require('./components/Notifications');
+const UserConfig = require('./components/UserConfig');
 
 // CONSTS
 const EVENT_CHAT = 'EVENT_CHAT';
 const EVENT_JOIN = 'EVENT_JOIN';
 
+// MISC vars 
+let lastChatTs = undefined;
 
 const pack = JSON.parse(fs.readFileSync(__dirname + '/package.json').toString());
-
-const mos = [
-    'januar',
-    'februar',
-    'mars',
-    'april',
-    'mai',
-    'juni',
-    'juli',
-    'august',
-    'september',
-    'oktober',
-    'november',
-    'desember',
-]
-
-const getTodaysDateNorwegian = () => {
-    const d = new Date();
-    return (`${d.getDate()}. ${mos[d.getMonth()]}`);
-}
-
-const parseWebMenu = ((machine, username, password) => {
-
-    const host = JSON.parse(fs.readFileSync(__dirname + '/host.json').toString());
-
-    const {ntlm_domain, url} = host;
-
-    var opts = {
-        username: username,
-        password: password,
-        ntlm_domain,
-        workstation: machine,
-        url
-      };
-
-
-      var json = {
-        // whatever object you want to submit
-      };
-      
-      ntlm.get(opts, json, function(err, response) {
-          console.log(response.statusCode);
-          findTodaysMeal(response.body);
-      });
-
-
-})
-
-const findTodaysMeal = (bod) => {
-    let workbod = bod.toLowerCase(); 
-    const today = getTodaysDateNorwegian();
-    const meal = workbod.split(today)[1].split('</div>')[0];
-
-    const hotMeal = (meal.split('her og nå varmt</strong>')[1].split('<strong>sandwich</strong>')[0]);
-    
-    let hotMeals = hotMeal.split('<p>');
-    hotMeals = hotMeals.slice(1);
-    hotMeals.splice(-1, 1);
-
-    hotMeals = hotMeals.map((el) => {
-        const mealArr = el.split('&#160;');
-        return {
-            name: striptags(mealArr[0]),
-            price: striptags(mealArr[1])
-        }
-    })
-    
-    console.log(hotMeals);
-}
-
-
-async function getUsername() {
-    return new Promise((resolve, reject) => {
-        execFile('whoami', [], (error, stdout, stderr) => {
-            if (error) {
-                return reject(error);
-            }
-            return resolve(stdout.trim());
-        });
-    });
-}
-
-async function getMachineName() {
-    return new Promise((resolve, reject) => {
-        execFile('hostname', [], (error, stdout, stderr) => {
-            if (error) {
-                return reject(error);
-            }
-            return resolve(stdout.trim());
-        });
-    });
-}
-
-async function getPassword() {
-    return prompt('password: ', {
-        method: 'hide'
-    })
-}
-
-async function getTodaysMenu() {
-    const username = await getUsername(); 
-    const machine = await getMachineName();
-    const password = (await getPassword()).trim(); 
-    
-    parseWebMenu(machine, username, password);
-}
-
-
 
 async function getNick() {
     return new Promise((resolve, reject) => {
@@ -136,10 +31,8 @@ async function getNick() {
           });
     
           rl.question('Velg nick for chat: ', (answer) => {
-            // TODO: Log the answer in a database
             rl.close();
             return resolve(answer);
-            //console.log(`Thank you for your valuable feedback: ${answer}`);
         });
     })
 }
@@ -184,23 +77,26 @@ Denne får du av en annen på teamet`
     return;
 }
 
-const userCfg = JSON.parse(fs.readFileSync(__dirname + '/user.json').toString());
+UserConfig.load();
+const userCfg = UserConfig.userCfg;
+
+// Load notifications
+const notifications = new Notifications(UserConfig);
 
 // FIREBASE STUFF 
-
 firebase.initializeApp({
     serviceAccount: "./key.json",
     databaseURL: "https://kantinebot.firebaseio.com/"
-  });  //by adding your credentials, you get authorized to read and write from the database
+  }); 
 
-var db = firebase.database();
-var coreRef = db.ref("/core");  //Set the current directory you are working in
-var chatRef = db.ref("/core/chat");  //Set the current directory you are working in
-var h2Ref = db.ref("/core/mat/h2");  //Set the current directory you are working in
-var h9Ref = db.ref("/core/mat/h9");  //Set the current directory you are working in
-var votesRef = db.ref("/core/votes");  //Set the current directory you are working in
-var eventsRef = db.ref("/events");  //Set the current directory you are working in
-var onlineRef = db.ref("/users");  //Set the current directory you are working in
+const db = firebase.database();
+
+const coreRef = db.ref("/core");
+const chatRef = db.ref("/core/chat");  
+const h2Ref = db.ref("/core/mat/h2");  
+const h9Ref = db.ref("/core/mat/h9");  
+const votesRef = db.ref("/core/votes"); 
+const eventsRef = db.ref("/events"); 
 
 
 console.log('Loading...');
@@ -272,17 +168,42 @@ const getVotes = () => {
     return pollRes;
 }
 
+const checkNotification = (evts) => {
+    const chatMsgs = 
+        evts.filter((el) => { return el.type === EVENT_CHAT })
+            .sort((a, b) => { return Number(a.ts) < Number(b.ts) });
+    
+    // Validate last chat against last notification var
+    if (chatMsgs.length > 0 && chatMsgs[0].ts !== lastChatTs) {
+        const lastNewChat = chatMsgs[0];
+        // Check that notification is on and that this is not initial load, and that is it not from myself
+        if (
+            notifications.getSetting() 
+            && lastChatTs !== undefined 
+            && lastNewChat.username !== userCfg.nick
+        ) {
+            notifier.notify({
+                title: '[Kantinevote] Msg from ' + lastNewChat.username,
+                message: lastNewChat.payload.msg
+              });
+        }
+        lastChatTs = lastNewChat.ts;
+    }
+}
+
 const renderEvtLog = () => {
     let lines = [];
-
     const evts = Object.values(eventsData);
 
+    // Check if we should send notifications
+    if (notifications.getSetting()) checkNotification(evts);
+
     lines = evts.map((el) => {
-
         const d = new Date(el.ts);
-        const hrs = `${d.getHours()}:${d.getMinutes()}`;
-
-        let line = `${hrs} [${colors.yellow(el.username)}] `;
+        const hrs = d.getHours();
+        const mns = d.getMinutes();
+        const hrsMns = `${hrs >= 10 ? hrs : '0' + hrs}:${mns >= 10 ? mns : '0' + mns}`;
+        let line = `${hrsMns} [${colors.yellow(el.username)}] `;
         switch(el.type) {
             case EVENT_JOIN:
                 line += colors.cyan('logget på');
@@ -294,14 +215,11 @@ const renderEvtLog = () => {
                 line += el.type;
                 break;
         }
-
         return line;
     });
-
     for (let i = lines.length; i < 10; i++) {
         lines.push('');
     }
-
     return lines.join('\n');
 }
 
@@ -313,7 +231,7 @@ const updateLine = () => {
     process.stdout.write(`
 -----------------------------
 ${colors.bgBlue(`Mat ${pack.version} - ${new Date().toLocaleDateString()}`)} Help? -> readme.md
-Stem med /vote <h2|h9>
+Stem med /vote <h2|h9> (Cmds: /notifications <on/off>, /delvote, les README.md)
 -----------------------------
 ${colors.green('Mat h2')} : ${coreData.mat.h2}
 ${colors.red('Mat h9')} : ${coreData.mat.h9}
@@ -380,8 +298,6 @@ const clearMyVote = () => {
     return errorScreen('Du har ingen stemme fra før');
 
 
-    // console.log(systemData.votes);
-
 }
 
 const dispatchEvent = (type, payload) => {
@@ -406,7 +322,13 @@ const chatFeature = () => {
         } else if (answer.startsWith('/delvote')) {
             clearMyVote();
             return;
-        } else if (answer.startsWith('/host')) {
+        } else if (answer.startsWith('/notifications')) {
+            const args = answer.split(' ');
+            if (args.length === 1) return errorScreen('Du må spesifisere innstilling. Eks /notifications <on|off>')
+            notifications.setSetting(args[1].toLowerCase() === 'on'.toLowerCase());
+            updateLine();
+            return;
+        }else if (answer.startsWith('/host')) {
             const args = answer.split(' ');
             switch(args[1]) {
                 case 'h2':
@@ -426,10 +348,7 @@ const chatFeature = () => {
             return;
         }
 
-        // TODO: Log the answer in a database
-
         if (answer.trim() === '') return errorScreen('Du kan ikke sende tom melding.');
-
         chatRef.set({
             msg: answer,
             author: userCfg.nick
@@ -438,7 +357,6 @@ const chatFeature = () => {
             msg: answer
         });
         updateLine();
-        //console.log(`Thank you for your valuable feedback: ${answer}`);
     });
 }
 

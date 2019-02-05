@@ -34,6 +34,8 @@ Kommandoer:
 * `/vote <h2|h9>` - stemme på en kantine (én per dag)
 * `/delvote` - sletter din stemme
 
+* `/notifications <on|off>` - skru varsler av/på (på default), kun aktivt med program oppe 
+
 Host-kommandoer:
 
 * `/host <h2|h9> <meal>` - setter dagens rett
