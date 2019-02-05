@@ -7,6 +7,9 @@
     git clone https://github.com/ErlendEllingsen/randomcrap-mat.git kantinevote
     cd ./kantinevote
     npm install
+    vim ./key.json
+    # legg inn nøkelen du mottar av en på teamet
+    node index.js
 
 ### Få tilsendt `key.json` (mail, hipchat)
 
