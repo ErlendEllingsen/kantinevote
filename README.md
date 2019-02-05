@@ -35,6 +35,7 @@ Host-kommandoer:
 
 * `/host <h2|h9> <meal>` - setter dagens rett
 * `/host resetvote` - sletter alle votes
+* `/host clearevts` - clear events
 
 ### Other/misc
 

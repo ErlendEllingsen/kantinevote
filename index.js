@@ -13,6 +13,11 @@ const uuid = require('uuid/v1');
 var striptags = require('striptags');
 var firebase = require("firebase");
 
+// CONSTS
+const EVENT_CHAT = 'EVENT_CHAT';
+const EVENT_JOIN = 'EVENT_JOIN';
+
+
 const pack = JSON.parse(fs.readFileSync(__dirname + '/package.json').toString());
 
 const mos = [
@@ -189,43 +194,47 @@ firebase.initializeApp({
   });  //by adding your credentials, you get authorized to read and write from the database
 
 var db = firebase.database();
-var ref = db.ref("/");  //Set the current directory you are working in
-var chatRef = db.ref("/chat");  //Set the current directory you are working in
-var h2Ref = db.ref("/mat/h2");  //Set the current directory you are working in
-var h9Ref = db.ref("/mat/h9");  //Set the current directory you are working in
-var votesRef = db.ref("/votes");  //Set the current directory you are working in
+var coreRef = db.ref("/core");  //Set the current directory you are working in
+var chatRef = db.ref("/core/chat");  //Set the current directory you are working in
+var h2Ref = db.ref("/core/mat/h2");  //Set the current directory you are working in
+var h9Ref = db.ref("/core/mat/h9");  //Set the current directory you are working in
+var votesRef = db.ref("/core/votes");  //Set the current directory you are working in
+var eventsRef = db.ref("/events");  //Set the current directory you are working in
+var onlineRef = db.ref("/users");  //Set the current directory you are working in
 
 
 console.log('Loading...');
 
 
-let systemData = undefined;
+let coreData = {};
+let eventsData = {};
 
-ref.on("value", function(snapshot) {
-    systemData = snapshot.val();
+coreRef.on("value", function(snapshot) {
+    coreData = snapshot.val();
+    if (coreData == null) coreData = {};
     updateLine();
-  });
+});
 
+eventsRef.orderByChild("ts").limitToLast(10).on("value", function(snapshot) {
+    eventsData = snapshot.val();
+    if (eventsData == null) eventsData = {};
+    updateLine();
+});
 
 const clearScreen = () => {
-    process.stdout.clearLine();
-    process.stdout.moveCursor(0,-1);
-    process.stdout.clearLine();
-    process.stdout.moveCursor(0,-1);
-    process.stdout.clearLine();
-    process.stdout.moveCursor(0,-1);
-    process.stdout.clearLine();
-    process.stdout.moveCursor(0,-1);
-    process.stdout.clearLine();
-    process.stdout.moveCursor(0,-1);
-    process.stdout.clearLine();
-    process.stdout.moveCursor(0,-1);
-    process.stdout.clearLine();
-    process.stdout.moveCursor(0,-1);
-    process.stdout.clearLine();
-    process.stdout.moveCursor(0,-1);
-    process.stdout.clearLine();
-    process.stdout.moveCursor(0,-1);
+
+    // Must clear each line used
+    const chatLines = 13;
+    const misc = 8;
+
+    const linesToClear = (chatLines + misc);
+
+    for (let i = 0; i < linesToClear; i++) {
+        process.stdout.clearLine();
+        process.stdout.moveCursor(0,-1);
+    }
+
+    // Clear final line
     process.stdout.clearLine();
     process.stdout.cursorTo(0);
 }
@@ -243,14 +252,14 @@ const successScreen = (message) => {
 }
 
 const getVotes = () => {
-    if (systemData.votes === undefined) {
+    if (coreData.votes === undefined) {
         return {
             h2: 0,
             h9: 0
         }
     }
 
-    const votes = Object.values(systemData.votes);
+    const votes = Object.values(coreData.votes);
 
     const pollRes = {
         h2: 0,
@@ -263,21 +272,57 @@ const getVotes = () => {
     return pollRes;
 }
 
+const renderEvtLog = () => {
+    let lines = [];
+
+    const evts = Object.values(eventsData);
+
+    lines = evts.map((el) => {
+
+        const d = new Date(el.ts);
+        const hrs = `${d.getHours()}:${d.getMinutes()}`;
+
+        let line = `${hrs} [${colors.yellow(el.username)}] `;
+        switch(el.type) {
+            case EVENT_JOIN:
+                line += colors.cyan('logget på');
+                break;
+            case EVENT_CHAT:
+                line += colors.white(el.payload.msg);
+                break;
+            default:
+                line += el.type;
+                break;
+        }
+
+        return line;
+    });
+
+    for (let i = lines.length; i < 10; i++) {
+        lines.push('');
+    }
+
+    return lines.join('\n');
+}
+
 const updateLine = () => {
 
     const pollRes = getVotes();
-
-    const value = systemData;
 
     clearScreen();
     process.stdout.write(`
 -----------------------------
 ${colors.bgBlue(`Mat ${pack.version} - ${new Date().toLocaleDateString()}`)} Help? -> readme.md
+Stem med /vote <h2|h9>
 -----------------------------
-${colors.green('Mat h2')} : ${value.mat.h2}
-${colors.red('Mat h9')} : ${value.mat.h9}
-Chat   : ${colors.yellow(value.chat.author)}: ${colors.cyan(value.chat.msg)}
-Poll   : Votes for h9: ${pollRes.h9} h2: ${pollRes.h2}\n`);
+${colors.green('Mat h2')} : ${coreData.mat.h2}
+${colors.red('Mat h9')} : ${coreData.mat.h9}
+Poll   : Votes for h9: ${pollRes.h9} h2: ${pollRes.h2}
+-----------------------------
+${renderEvtLog()}
+-----------------------------
+`);
+
     chatFeature();
 }
 
@@ -300,13 +345,13 @@ const voteKantine = (kantine) => {
         return;
     }
 
-    if (systemData.votes === undefined) {
+    if (coreData.votes === undefined) {
         createVote();
         return;
     }
 
 
-    const votes = Object.values(systemData.votes);
+    const votes = Object.values(coreData.votes);
     const userVotePos = votes.findIndex(((el) => { return el.userid === userCfg.userid }));
 
     if (userVotePos === -1) {
@@ -319,12 +364,12 @@ const voteKantine = (kantine) => {
 }
 
 const clearMyVote = () => {
-    if (systemData.votes === undefined) {
+    if (coreData.votes === undefined) {
         return errorScreen('Ingen aktive stemmer');
     }
 
-    for (let key in systemData.votes) {
-        const o = systemData.votes[key];
+    for (let key in coreData.votes) {
+        const o = coreData.votes[key];
         if (o.userid === userCfg.userid) {
             console.log(key);
             votesRef.child(key).remove();
@@ -339,9 +384,18 @@ const clearMyVote = () => {
 
 }
 
+const dispatchEvent = (type, payload) => {
+    eventsRef.push({
+        username: userCfg.nick,
+        type: type,
+        payload,
+        ts: Date.now(),
+    })
+}
+
 const chatFeature = () => {
     
-    rl.question('Enter chat msg: ', (answer) => {
+    rl.question('Enter msg/cmd: ', (answer) => {
 
         if (answer.startsWith('/vote')) {
             const args = answer.split(' ');
@@ -364,6 +418,9 @@ const chatFeature = () => {
                 case 'resetvote':
                     votesRef.set(null);
                     break;
+                case 'clearevts':
+                    eventsRef.set(null);
+                    break;
             }
             updateLine();
             return;
@@ -377,9 +434,12 @@ const chatFeature = () => {
             msg: answer,
             author: userCfg.nick
         });
+        dispatchEvent(EVENT_CHAT, {
+            msg: answer
+        });
         updateLine();
         //console.log(`Thank you for your valuable feedback: ${answer}`);
     });
 }
 
-
+dispatchEvent(EVENT_JOIN, null);

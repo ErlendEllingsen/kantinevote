@@ -1,6 +1,6 @@
 {
   "name": "kantinevote",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "mat? mat.",
   "main": "index.js",
   "scripts": {
