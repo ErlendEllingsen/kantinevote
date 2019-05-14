@@ -126,14 +126,11 @@ const getVotes = () => {
             h9: 0
         }
     }
-
     const votes = Object.values(coreData.votes);
-
     const pollRes = {
         h2: 0,
         h9: 0
     }
-
     votes.forEach((el) => {
         pollRes[el.vote]++;
     })
