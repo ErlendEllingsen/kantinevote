@@ -1,17 +1,14 @@
-#!/usr/bin/env node
-
-// beware of ugly code
-// u were warned
-// will maybe be fixed later
-
 const fs = require('fs');
-const readline = require('readline');
-const colors = require('colors');
 const uuid = require('uuid/v1');
+const colors = require('colors');
 const firebase = require("firebase");
 const notifier = require('node-notifier');
 
-const getCursorPosition = require('get-cursor-position');
+
+/**
+ * --- KV INIT AND CFG ---
+ */
+const pack = JSON.parse(fs.readFileSync(__dirname + '/package.json').toString());
 
 const Notifications = require('./components/Notifications');
 const UserConfig = require('./components/UserConfig');
@@ -22,14 +19,14 @@ const isDev = process.argv[2] === 'dev';
 const EVENT_CHAT = 'EVENT_CHAT';
 const EVENT_JOIN = 'EVENT_JOIN';
 
-// MISC vars 
+// MISC vars
 let lastChatTs = undefined;
 let isLoaded = false;
 
-const pack = JSON.parse(fs.readFileSync(__dirname + '/package.json').toString());
 
-
-// User config
+/**
+ * --- USER INIT AND FIRST TIME SETUP ---
+ */
 if (!fs.existsSync(__dirname + '/user.json')) {
     require('./components/ClientConfiguration').setupUserConfig();
     return;
@@ -43,9 +40,16 @@ Oppsett av mat-klient:
 ${colors.red('^')} Vennligst legg ${colors.bgRed('key.json')} i ${__dirname}
 -----------------------------
 Denne får du av en annen på teamet`
-);
+    );
     return;
 }
+
+const {chatBox, chatInputBox, inputField, helpBox, h2Box, h9Box, menuBox, screen} = require('./components/Screen');
+
+
+/**
+ * --- CLIENT SETUP ---
+ */
 
 UserConfig.load();
 const userCfg = UserConfig.userCfg;
@@ -53,25 +57,20 @@ const userCfg = UserConfig.userCfg;
 // Load notifications
 const notifications = new Notifications(UserConfig);
 
-// FIREBASE STUFF 
+// FIREBASE STUFF
 firebase.initializeApp({
     serviceAccount: "./key.json",
     databaseURL: "https://kantinebot.firebaseio.com/"
-  }); 
+});
 
 const db = firebase.database();
 
 const coreRef = db.ref("/core");
-const chatRef = db.ref("/core/chat");  
-const h2Ref = db.ref("/core/mat/h2");  
-const h9Ref = db.ref("/core/mat/h9");  
-const votesRef = db.ref("/core/votes"); 
-const eventsRef = db.ref("/events"); 
-
-
-
-
-console.log('Loading...');
+const chatRef = db.ref("/core/chat");
+const h2Ref = db.ref("/core/mat/h2");
+const h9Ref = db.ref("/core/mat/h9");
+const votesRef = db.ref("/core/votes");
+const eventsRef = db.ref("/events");
 
 
 let coreData = {};
@@ -88,36 +87,6 @@ eventsRef.orderByChild("ts").limitToLast(10).on("value", function(snapshot) {
     if (eventsData == null) eventsData = {};
     renderScreen();
 });
-
-const clearScreen = () => {
-
-    // Must clear each line used
-    const chatLines = 13;
-    const misc = 8;
-
-    const linesToClear = (chatLines + misc);
-
-    for (let i = 0; i < linesToClear; i++) {
-        process.stdout.clearLine();
-        process.stdout.moveCursor(0,-1);
-    }
-
-    // Clear final line
-    process.stdout.clearLine();
-    process.stdout.cursorTo(0);
-}
-
-const errorScreen = (message) => {
-    clearScreen(); 
-    console.log(colors.bgRed(message));
-    setTimeout(renderScreen, 3000);
-}
-
-const successScreen = (message) => {
-    clearScreen();
-    console.log(colors.bgGreen(message));
-    setTimeout(renderScreen, 3000);
-}
 
 const getVotes = () => {
     if (coreData.votes === undefined) {
@@ -137,27 +106,45 @@ const getVotes = () => {
     return pollRes;
 }
 
+
 const checkNotification = (evts) => {
-    const chatMsgs = 
+    const chatMsgs =
         evts.filter((el) => { return el.type === EVENT_CHAT })
             .sort((a, b) => { return Number(a.ts) < Number(b.ts) });
-    
+
     // Validate last chat against last notification var
     if (chatMsgs.length > 0 && chatMsgs[0].ts !== lastChatTs) {
         const lastNewChat = chatMsgs[0];
         // Check that notification is on and that this is not initial load, and that is it not from myself
         if (
-            notifications.getSetting() 
-            && lastChatTs !== undefined 
+            notifications.getSetting()
+            && lastChatTs !== undefined
             && lastNewChat.username !== userCfg.nick
         ) {
             notifier.notify({
                 title: '[Kantinevote] Msg from ' + lastNewChat.username,
                 message: lastNewChat.payload.msg
-              });
+            });
         }
         lastChatTs = lastNewChat.ts;
     }
+}
+
+const errorScreen = (message) => {
+    helpBox.setContent(`{red-fg}${message}{/red-fg}`);
+    screen.render();
+    setTimeout(setDefaultHelpScreen, 3000);
+}
+
+const successScreen = (message) => {
+    helpBox.setContent(`{green-fg}${message}{/green-fg}`);
+    screen.render();
+    setTimeout(setDefaultHelpScreen, 3000);
+}
+
+const setDefaultHelpScreen = () => {
+    helpBox.setContent(`Latest version is ${coreData.version !== undefined ? coreData.version.latest : 'N/A'}, Installed: ${pack.version}`);
+    screen.render();
 }
 
 const renderEvtLog = () => {
@@ -172,13 +159,13 @@ const renderEvtLog = () => {
         const hrs = d.getHours();
         const mns = d.getMinutes();
         const hrsMns = `${hrs >= 10 ? hrs : '0' + hrs}:${mns >= 10 ? mns : '0' + mns}`;
-        let line = `${hrsMns} [${colors.yellow(el.username)}] `;
+        let line = `${hrsMns} [{yellow-fg}${el.username}{/yellow-fg}] `;
         switch(el.type) {
             case EVENT_JOIN:
-                line += colors.cyan('logget på');
+                line += '{cyan-fg}logget på{/cyan-fg}';
                 break;
             case EVENT_CHAT:
-                line += colors.white(el.payload.msg);
+                line += `{white-fg}${el.payload.msg}{/white-fg}`;
                 break;
             default:
                 line += el.type;
@@ -192,62 +179,31 @@ const renderEvtLog = () => {
     return lines.join('\n');
 }
 
-async function getCursorPos() {
-    return new Promise((resolve, reject) => {
-        getCursorPosition.async(function(pos) {
-            return resolve({
-                row: pos.row,
-                col: pos.col
-            });
-        });
-    })
-}
-
 const renderScreen = async () => {
-
-    const cursorPos = await getCursorPos();
 
     const pollRes = getVotes();
 
-    clearScreen();
-    process.stdout.write(`
------------------------------
-${colors.bgBlue(`KV ${isDev ? '(dev)' : ''} ${pack.version} - ${new Date().toLocaleDateString()}`)} Help? -> readme.md
-Stem med /vote <h2|h9> (Cmds: /notifications <on/off>, /delvote, les README.md)
------------------------------
-${colors.green('Mat h2')} : ${coreData.mat.h2}
-${colors.red('Mat h9')} : ${coreData.mat.h9}
-Poll   : Votes for h2: ${pollRes.h2} h9: ${pollRes.h9}
------------------------------
-${renderEvtLog()}
------------------------------
-`);
+    // Render chat box
+    chatBox.setContent(renderEvtLog());
+    chatBox.setScrollPerc(100);
 
-    chatFeature();
+    // Render menu
+    h2Box.setContent(`{bold}{green-fg}H2{/green-fg} (${pollRes.h2} votes){/bold}: ${coreData.mat.h2}`);
+    h9Box.setContent(`{bold}{red-fg}H9{/red-fg} (${pollRes.h9} votes){/bold}: ${coreData.mat.h9}`);
 
-    if (isLoaded) {
-        process.stdout.cursorTo(cursorPos.col,cursorPos.row);
-    } else {
-        isLoaded = true;
-    }
+    screen.render();
+
+    setTimeout(setDefaultHelpScreen, 3000);
 }
-
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
 
 
 const voteKantine = (kantine) => {
-
     const createVote = () => {
         votesRef.push({
             userid: userCfg.userid,
             vote: kantine,
             ts: new Date().toLocaleString()
         })
-        successScreen(`Du har stemt på ${colors.bold(kantine)}`);
         return;
     }
 
@@ -255,7 +211,6 @@ const voteKantine = (kantine) => {
         createVote();
         return;
     }
-
 
     const votes = Object.values(coreData.votes);
     const userVotePos = votes.findIndex(((el) => { return el.userid === userCfg.userid }));
@@ -266,7 +221,6 @@ const voteKantine = (kantine) => {
     }
 
     return errorScreen('Du har allerede stemt i dag');
-
 }
 
 const clearMyVote = () => {
@@ -277,7 +231,6 @@ const clearMyVote = () => {
     for (let key in coreData.votes) {
         const o = coreData.votes[key];
         if (o.userid === userCfg.userid) {
-            console.log(key);
             votesRef.child(key).remove();
             return successScreen('Du har fjernet din stemme');
         }
@@ -285,8 +238,13 @@ const clearMyVote = () => {
 
     return errorScreen('Du har ingen stemme fra før');
 
-
 }
+
+const checkForUpdate = () => {
+    helpBox.setContent('latest version is slol');
+    screen.render();
+}
+
 
 const dispatchEvent = (type, payload) => {
     eventsRef.push({
@@ -297,55 +255,87 @@ const dispatchEvent = (type, payload) => {
     })
 }
 
-const chatFeature = () => {
-    
-    rl.question('Enter msg/cmd: ', (answer) => {
 
-        if (answer.startsWith('/vote')) {
-            const args = answer.split(' ');
-            if (args.length === 1) return errorScreen('Du må spesifisere kantine. Eks /vote <h2|h9>')
-            if (args[1] !== 'h2' && args[1] !== 'h9') return errorScreen('Ugyldig kantine. Eks /vote <h2|h9>')
-            voteKantine(args[1]);
-            return;
-        } else if (answer.startsWith('/delvote')) {
-            clearMyVote();
-            return;
-        } else if (answer.startsWith('/notifications')) {
-            const args = answer.split(' ');
-            if (args.length === 1) return errorScreen('Du må spesifisere innstilling. Eks /notifications <on|off>')
-            notifications.setSetting(args[1].toLowerCase() === 'on'.toLowerCase());
-            renderScreen();
-            return;
-        }else if (answer.startsWith('/host')) {
-            const args = answer.split(' ');
-            switch(args[1]) {
-                case 'h2':
-                    h2Ref.set(args.slice(2).join(' '));
-                    break;
-                case 'h9':
-                    h9Ref.set(args.slice(2).join(' '));
-                    break;
-                case 'resetvote':
-                    votesRef.set(null);
-                    break;
-                case 'clearevts':
-                    eventsRef.set(null);
-                    break;
-            }
-            renderScreen();
-            return;
-        }
+/**
+ * EVENT LISTENERS
+ */
 
-        if (answer.trim() === '') return errorScreen('Du kan ikke sende tom melding.');
-        chatRef.set({
-            msg: answer,
-            author: userCfg.nick
-        });
-        dispatchEvent(EVENT_CHAT, {
-            msg: answer
-        });
+
+// Quit on Escape, q, or Control-C.
+screen.key(['escape', 'q', 'C-c'], function(ch, key) {
+    return process.exit(0);
+});
+
+// Focus our element.
+chatBox.focus();
+
+// Render the screen.
+screen.render();
+
+inputField.on('submit', () => {
+    let text = inputField.getValue();
+
+    if (text === 'exit' || text === 'q' || text === '/exit') process.exit(0);
+
+    // Clear input
+    inputField.setValue('');
+    screen.render();
+    inputField.focus();
+
+    const answer = text;
+
+    // Process answer
+    if (answer.startsWith('/vote')) {
+        const args = answer.split(' ');
+        if (args.length === 1) return errorScreen('Du må spesifisere kantine. Eks /vote <h2|h9>');
+        if (args[1] !== 'h2' && args[1] !== 'h9') return errorScreen('Ugyldig kantine. Eks /vote <h2|h9>');
+        voteKantine(args[1]);
+        return;
+    } else if (answer.startsWith('/delvote')) {
+        clearMyVote();
+        return;
+    } else if (answer.startsWith('/check-update')) {
+        checkForUpdate();
+        return;
+    } else if (answer.startsWith('/notifications')) {
+        const args = answer.split(' ');
+        if (args.length === 1) return errorScreen('Du må spesifisere innstilling. Eks /notifications <on|off>');
+        notifications.setSetting(args[1].toLowerCase() === 'on'.toLowerCase());
         renderScreen();
+        return;
+    }else if (answer.startsWith('/host')) {
+        const args = answer.split(' ');
+        switch(args[1]) {
+            case 'h2':
+                h2Ref.set(args.slice(2).join(' '));
+                break;
+            case 'h9':
+                h9Ref.set(args.slice(2).join(' '));
+                break;
+            case 'resetvote':
+                votesRef.set(null);
+                break;
+            case 'clearevts':
+                eventsRef.set(null);
+                break;
+        }
+        renderScreen();
+        return;
+    }
+
+    if (answer.trim() === '') return errorScreen('Du kan ikke sende tom melding.');
+    chatRef.set({
+        msg: answer,
+        author: userCfg.nick
     });
-}
+    dispatchEvent(EVENT_CHAT, {
+        msg: answer
+    });
+    renderScreen();
+
+
+});
+
+inputField.focus();
 
 if (!isDev) dispatchEvent(EVENT_JOIN, null);

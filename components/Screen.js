@@ -1,11 +1,14 @@
-var blessed = require('blessed');
+const fs = require('fs');
+const blessed = require('blessed');
+
+const pack = JSON.parse(fs.readFileSync(__dirname + '/../package.json').toString());
 
 // Create a screen object.
 const screen = blessed.screen({
     smartCSR: true
 });
 
-screen.title = 'Kantinevote - Bursting Pulsar';
+screen.title = `Kantinevote ${pack.version} - Bursting Pulsar`;
 
 // Create a box perfectly centered horizontally and vertically.
 const chatBox = blessed.box({
@@ -15,7 +18,7 @@ const chatBox = blessed.box({
     height: '45%',
     content: 'Communicate with the {bold}world{/bold}:',
     tags: true,
-    draggable: true,
+    draggable: false,
     keys: true,
     vi: true,
     alwaysScroll:true,
@@ -41,17 +44,65 @@ const chatBox = blessed.box({
 });
 
 const menuBox = blessed.box({
-    draggable: true,
+    draggable: false,
     top: 'top',
     left: '3%',
     width: '95%',
-    height: '25%',
+    height: '30%',
     content:
-        `{center}Dagens {bold}meny{/bold}{/center}
-{center}--------------------{/center}
-{bold}{green-fg}H2:{/green-fg}{/bold} (0 stemmer) Something something something
-{bold}{red-fg}H9:{/red-fg}{/bold} (0 stemmer) Something Something 
-{center}--------------------{/center}
+        `{center}KV ${pack.version} | Dagens {bold}meny{/bold}{/center}`,
+    tags: true,
+    border: {
+        type: 'line'
+    },
+    style: {
+        fg: 'white',
+        bg: 'black',
+        border: {
+            fg: '#f0f0f0'
+        },
+        hover: {
+            bg: 'green'
+        }
+    }
+});
+
+const h2Box = blessed.box({
+    draggable: false,
+    parent: menuBox,
+    top: '22%',
+    left: '0%',
+    width: '49%',
+    height: '68%',
+    content:
+        `
+`,
+    tags: true,
+    border: {
+        type: 'line'
+    },
+    style: {
+        fg: 'white',
+        bg: 'black',
+        border: {
+            fg: '#f0f0f0'
+        },
+        hover: {
+            bg: 'green'
+        }
+    }
+});
+
+const h9Box = blessed.box({
+    draggable: false,
+    parent: menuBox,
+    top: '22%',
+    title: 'test',
+    left: '49%',
+    width: '50%',
+    height: '68%',
+    content:
+        `
 `,
     tags: true,
     border: {
@@ -70,12 +121,12 @@ const menuBox = blessed.box({
 });
 
 const helpBox = blessed.box({
-    draggable: true,
+    draggable: false,
     top: '75%',
     left: '65%',
     width: '33%',
     height: '25%',
-    content: '{center}{bold}Hjelp{/bold}.{/center}',
+    content: '{center}{bold}Velkommen til KantineVote{/bold}{/center}',
     tags: true,
     border: {
         type: 'line'
@@ -100,7 +151,7 @@ const chatInputBox = blessed.box({
     height: '25%',
     content: '{bold}Erlend{/bold}:',
     tags: true,
-    draggable: true,
+    draggable: false,
     border: {
         type: 'line'
     },
@@ -143,6 +194,8 @@ module.exports = {
     chatBox,
     chatInputBox,
     inputField,
+    h2Box,
+    h9Box,
     menuBox,
     helpBox
 };

@@ -33,8 +33,10 @@ Kommandoer:
 
 * `/vote <h2|h9>` - stemme på en kantine (én per dag)
 * `/delvote` - sletter din stemme
-
 * `/notifications <on|off>` - skru varsler av/på (på default), kun aktivt med program oppe 
+* `/exit` - exit programmet 
+
+For å exite programmet: q, exit, eller /exit
 
 Host-kommandoer:
 
