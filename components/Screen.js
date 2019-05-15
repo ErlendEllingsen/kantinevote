@@ -2,6 +2,7 @@ const fs = require('fs');
 const blessed = require('blessed');
 
 const pack = JSON.parse(fs.readFileSync(__dirname + '/../package.json').toString());
+const user = JSON.parse(fs.readFileSync(__dirname + '/../user.json').toString());
 
 // Create a screen object.
 const screen = blessed.screen({
@@ -37,9 +38,9 @@ const chatBox = blessed.box({
         border: {
             fg: '#f0f0f0'
         },
-        hover: {
-            bg: 'green'
-        }
+        // hover: {
+        //     bg: 'green'
+        // }
     }
 });
 
@@ -61,9 +62,9 @@ const menuBox = blessed.box({
         border: {
             fg: '#f0f0f0'
         },
-        hover: {
-            bg: 'green'
-        }
+        // hover: {
+        //     bg: 'green'
+        // }
     }
 });
 
@@ -87,9 +88,9 @@ const h2Box = blessed.box({
         border: {
             fg: '#f0f0f0'
         },
-        hover: {
-            bg: 'green'
-        }
+        // hover: {
+        //     bg: 'green'
+        // }
     }
 });
 
@@ -114,9 +115,9 @@ const h9Box = blessed.box({
         border: {
             fg: '#f0f0f0'
         },
-        hover: {
-            bg: 'green'
-        }
+        // hover: {
+        //     bg: 'green'
+        // }
     }
 });
 
@@ -137,9 +138,9 @@ const helpBox = blessed.box({
         border: {
             fg: '#f0f0f0'
         },
-        hover: {
-            bg: 'green'
-        }
+        // hover: {
+        //     bg: 'green'
+        // }
     }
 });
 
@@ -149,7 +150,7 @@ const chatInputBox = blessed.box({
     left: '3%',
     width: '60%',
     height: '25%',
-    content: '{bold}Erlend{/bold}:',
+    content: `{bold}${user.nick}{/bold}:`,
     tags: true,
     draggable: false,
     border: {
@@ -161,9 +162,9 @@ const chatInputBox = blessed.box({
         border: {
             fg: '#f0f0f0'
         },
-        hover: {
-            bg: 'green'
-        }
+        // hover: {
+        //     bg: 'green'
+        // }
     }
 });
 
