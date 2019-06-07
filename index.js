@@ -18,6 +18,7 @@ const isDev = process.argv[2] === 'dev';
 // CONSTS
 const EVENT_CHAT = 'EVENT_CHAT';
 const EVENT_JOIN = 'EVENT_JOIN';
+const EVENT_VOTE = 'EVENT_VOTE';
 
 // MISC vars
 let lastChatTs = undefined;
@@ -164,6 +165,9 @@ const renderEvtLog = () => {
             case EVENT_JOIN:
                 line += '{cyan-fg}logget på{/cyan-fg}';
                 break;
+            case EVENT_VOTE:
+                line += '{cyan-fg}stemte på{/cyan-fg} {bold}' + (el.payload.kantine === 'h2' ? '{green-fg}H2{/green-fg}' : '{red-fg}H9{/red-fg}') + '{/bold}';
+                break;
             case EVENT_CHAT:
                 line += `{white-fg}${el.payload.msg}{/white-fg}`;
                 break;
@@ -203,7 +207,10 @@ const voteKantine = (kantine) => {
             userid: userCfg.userid,
             vote: kantine,
             ts: new Date().toLocaleString()
-        })
+        });
+        dispatchEvent(EVENT_VOTE, {
+            kantine
+        });
         return;
     }
 
